@@ -8,7 +8,12 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 # If modifying these scopes, delete the file token.json.
-SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
+SCOPES = ["https://www.googleapis.com/auth/calendar.readonly","https://www.googleapis.com/auth/spreadsheets.readonly"]
+
+
+# The ID and range of a sample spreadsheet.
+SAMPLE_SPREADSHEET_ID = "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+SAMPLE_RANGE_NAME = "Class Data!A2:E"
 
 
 def main():
@@ -35,13 +40,14 @@ def main():
       token.write(creds.to_json())
 
   try:
-    service = build("calendar", "v3", credentials=creds)
+    #initialize calendar service
+    calservice = build("calendar", "v3", credentials=creds)
 
     # Call the Calendar API
     now = datetime.datetime.now(tz=datetime.timezone.utc).isoformat()
     print("Getting the upcoming 10 events")
     events_result = (
-        service.events()
+        calservice.events()
         .list(
             calendarId="primary",
             timeMin=now,
@@ -64,6 +70,29 @@ def main():
 
   except HttpError as error:
     print(f"An error occurred: {error}")
+
+  try:
+    sheetservice = build("sheets", "v4", credentials=creds)
+
+    # Call the Sheets API
+    sheet = sheetservice.spreadsheets()
+    result = (
+        sheet.values()
+        .get(spreadsheetId=SAMPLE_SPREADSHEET_ID, range=SAMPLE_RANGE_NAME)
+        .execute()
+    )
+    values = result.get("values", [])
+
+    if not values:
+      print("No data found.")
+      return
+
+    print("Name, Major:")
+    for row in values:
+      # Print columns A and E, which correspond to indices 0 and 4.
+      print(f"{row[0]}, {row[4]}")
+  except HttpError as err:
+    print(err)
 
 
 if __name__ == "__main__":
